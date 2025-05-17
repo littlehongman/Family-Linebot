@@ -28,16 +28,18 @@ jobs:
           cp *.py package/
           cd package
           zip -r ../lambda_package.zip .
+          
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1  # update as needed
+      - name: Terraform Init
+        run: terraform init
 
-      - name: Update Lambda function code
-        run: |
-          aws lambda update-function-code \
-            --function-name arn:aws:lambda:us-east-1:524618625487:function:LineBot-Automation-Test \
-            --zip-file fileb://lambda_package.zip
+      - name: Terraform Plan
+        run: terraform plan -out=tfplan
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan
+
+      - name: Clean up package folder
+        run: rm -rf package lambda_package.zip

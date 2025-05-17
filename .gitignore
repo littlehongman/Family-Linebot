@@ -1,3 +1,6 @@
 lambda/
 .DS_Store
 *.pyc
+.terraform
+.terraform*
+terraform*
