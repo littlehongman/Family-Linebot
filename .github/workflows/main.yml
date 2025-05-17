@@ -25,7 +25,7 @@ jobs:
 
       - name: Bundle Lambda code
         run: |
-          cp lambda_function.py package/
+          cp *.py package/
           cd package
           zip -r ../lambda_package.zip .
 
