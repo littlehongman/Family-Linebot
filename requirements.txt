@@ -1,0 +1,9 @@
+requests
+pytz
+supabase
+line-bot-sdk
+openai
+prettytable
+redis
+langgraph
+langchain-openai
