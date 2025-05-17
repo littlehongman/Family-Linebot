@@ -2,6 +2,14 @@ provider "aws" {
   region = "us-east-1"  # change as needed
 }
 
+terraform {
+  backend "s3" {
+    bucket         = "my-terraform-state-bucket-github-actions"
+    key            = "lambda/terraform.tfstate"
+    region         = "us-east-1"
+  }
+}
+
 resource "aws_iam_role" "lambda_exec_role" {
   name = "lambda_exec_role"
 

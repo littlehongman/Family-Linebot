@@ -11,6 +11,7 @@ env:
  # Credentials for deployment to AWS
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  BUCKET_TF_STATE: "my-terraform-state-bucket-github-actions"
 
 jobs:
   deploy:
@@ -40,7 +41,7 @@ jobs:
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init
-        run: terraform init
+        run: terraform init -backend-config="bucket=$BUCKET_TF_STATE"
 
       - name: Terraform Plan
         run: terraform plan -out=tfplan
