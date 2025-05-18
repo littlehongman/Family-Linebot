@@ -6,16 +6,16 @@ on:
       - main
 
 env:
- # verbosity setting for Terraform logs
   TF_LOG: INFO
- # Credentials for deployment to AWS
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   BUCKET_TF_STATE: "my-terraform-state-bucket-github-actions"
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
+    outputs:
+      cache-key: ${{ steps.set-cache-key.outputs.key }}
 
     steps:
       - name: Checkout code
@@ -26,16 +26,38 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
+      - name: Install dependencies and build Lambda
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt -t package
-
-      - name: Bundle Lambda code
-        run: |
           cp *.py package/
           cd package
           zip -r ../lambda_package.zip .
+
+      - name: Generate cache key
+        id: set-cache-key
+        run: |
+          echo "key=lambda-zip-${{ github.sha }}" >> $GITHUB_OUTPUT
+
+      - name: Cache built Lambda package
+        uses: actions/cache@v2
+        with:
+          path: lambda_package.zip
+          key: lambda-zip-${{ github.sha }}
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Restore cached Lambda package
+        uses: actions/cache@v2
+        with:
+          path: lambda_package.zip
+          key: ${{ needs.build.outputs.cache-key }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -49,5 +71,5 @@ jobs:
       - name: Terraform Apply
         run: terraform apply -auto-approve tfplan
 
-      - name: Clean up package folder
-        run: rm -rf package lambda_package.zip
+      - name: Clean up
+        run: rm -f lambda_package.zip
