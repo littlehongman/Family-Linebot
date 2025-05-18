@@ -32,7 +32,7 @@ resource "aws_iam_role_policy_attachment" "basic_lambda_policy" {
 }
 
 resource "aws_lambda_function" "my_lambda" {
-  function_name = "my-python-lambda"
+  function_name = "FamilyLineBot-LangGraph"
   runtime       = "python3.11"
   role          = aws_iam_role.lambda_exec_role.arn
   handler       = "lambda_function.lambda_handler"
@@ -40,4 +40,9 @@ resource "aws_lambda_function" "my_lambda" {
 
   filename         = "lambda_package.zip"
   source_code_hash = filebase64sha256("lambda_package.zip")
+}
+
+resource "aws_lambda_function_url" "test_latest" {
+  function_name      = aws_lambda_function.my_lambda.function_name
+  authorization_type = "NONE"
 }
