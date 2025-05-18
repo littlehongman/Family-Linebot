@@ -38,8 +38,8 @@ resource "aws_lambda_function" "my_lambda" {
   handler       = "lambda_function.lambda_handler"
   timeout       = 15
 
-  filename         = "lambda_package.zip"
-  source_code_hash = filebase64sha256("lambda_package.zip")
+  filename         = "${path.module}/../lambda_package.zip"
+  source_code_hash = filebase64sha256("${path.module}/../lambda_package.zip")
 
   environment {
     variables = {
