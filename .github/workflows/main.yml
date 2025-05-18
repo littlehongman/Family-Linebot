@@ -10,6 +10,11 @@ env:
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   BUCKET_TF_STATE: "my-terraform-state-bucket-github-actions"
+  TF_VAR_channel_access_token: ${{ secrets.CHANNEL_ACCESS_TOKEN }}
+  TF_VAR_channel_secret: ${{ secrets.CHANNEL_SECRET }}
+  TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+  TF_VAR_redis_key: ${{ secrets.REDIS_KEY }}
+  TF_VAR_supabase_key: ${{ secrets.SUPABASE_KEY }}
 
 jobs:
   build:
@@ -41,6 +46,9 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./terraform
 
     steps:
       - name: Checkout code

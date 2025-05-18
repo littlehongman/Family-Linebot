@@ -3,4 +3,4 @@ lambda/
 *.pyc
 .terraform
 .terraform*
-terraform*
+example

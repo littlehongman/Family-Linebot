@@ -40,6 +40,16 @@ resource "aws_lambda_function" "my_lambda" {
 
   filename         = "lambda_package.zip"
   source_code_hash = filebase64sha256("lambda_package.zip")
+
+  environment {
+    variables = {
+      CHANNEL_ACCESS_TOKEN = var.channel_access_token
+      CHANNEL_SECRET        = var.channel_secret
+      OPENAI_API_KEY        = var.openai_api_key
+      REDIS_KEY             = var.redis_key
+      SUPABASE_KEY          = var.supabase_key
+    }
+  }
 }
 
 resource "aws_lambda_function_url" "test_latest" {
