@@ -60,7 +60,7 @@ def flex_message_generator(data):
                 },
                 {
                     "type": "text",
-                    "text": str(datetime.fromisoformat(item['created_at']).astimezone(pytz.timezone("Asia/Taipei")).date()),
+                    "text": str(datetime.fromisoformat(item['time']).astimezone(pytz.timezone("Asia/Taipei")).date()),
                     "size": "sm",
                     "flex": 2
                 },
