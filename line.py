@@ -1,3 +1,6 @@
+from datetime import datetime
+import pytz
+
 def flex_message_generator(data):
     template = {
         "type": "bubble",
@@ -21,8 +24,14 @@ def flex_message_generator(data):
                             "text": "金額",
                             "weight": "bold",
                             "size": "sm",
-                            "flex": 1,
-                            "align": "end",
+                            "flex": 2,
+                        },
+                        {
+                            "type": "text",
+                            "text": "日期",
+                            "weight": "bold",
+                            "size": "sm",
+                            "flex": 2,
                         },
                     ],
                 },
@@ -47,8 +56,13 @@ def flex_message_generator(data):
                     "type": "text",
                     "text": str(item['amount']),
                     "size": "sm",
-                    "flex": 1,
-                    "align": "end",
+                    "flex": 2,
+                },
+                {
+                    "type": "text",
+                    "text": str(datetime.fromisoformat(item['created_at']).astimezone(pytz.timezone("Asia/Taipei")).date()),
+                    "size": "sm",
+                    "flex": 2
                 },
             ],
         }
