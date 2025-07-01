@@ -353,7 +353,7 @@ def get_visa_exchange_rate(state, from_curr='TWD', to_curr='USD', amount=1):
             'toCurr': to_curr
         }
 
-        response = requests.get(base_url, params=params, headers=headers)
+        response = requests.get(base_url, params=params, headers=headers, verify=False)
 
         if response.status_code == 200:
             res_json = response.json()
