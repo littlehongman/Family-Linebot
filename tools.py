@@ -327,55 +327,18 @@ def list_todo(state):
     return Command(goto=END, update={"messages": [ HumanMessage(content=return_text) ], 'keep_alive': keep_alive })
 
 def get_visa_exchange_rate(state, from_curr='TWD', to_curr='USD', amount=1):
-    base_url = "https://usa.visa.com/cmsapi/fx/rates"
-    current_date = datetime.now(pytz.timezone('America/New_York'))
+    base_url = f"https://v6.exchangerate-api.com/v6/{os.environ['EXCHANGERATE_API_KEY']}/latest/USD"
     max_retries = 3
 
-    def format_date(date):
-        return date.strftime('%m/%d/%Y')
-    
     for _ in range(max_retries):
-        user_agents = [
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Safari/605.1.15",
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:132.0) Gecko/20100101 Firefox/132.0",
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
-            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0",
-            "Mozilla/5.0 (X11; Linux x86_64; rv:132.0) Gecko/20100101 Firefox/132.0"
-        ]
-
-        headers = {
-            'User-Agent': random.choice(user_agents),
-            'Accept': 'application/json, text/plain, */*',
-            'Accept-Language': 'en-US,en;q=0.9',
-            'Origin': 'https://usa.visa.com',
-            'Referer': 'https://usa.visa.com/support/consumer/travel-support/exchange-rate-calculator.html',
-            'Sec-Fetch-Dest': 'empty',
-            'Sec-Fetch-Mode': 'cors',
-            'Sec-Fetch-Site': 'same-origin'
-        }
-        
-        params = {
-            'amount': amount,
-            'fee': 0,
-            'utcConvertedDate': format_date(current_date),
-            'exchangedate': format_date(current_date),
-            'fromCurr': from_curr,
-            'toCurr': to_curr
-        }
-
-        response = requests.get(base_url, params=params, headers=headers, verify=False)
+        response = requests.get(base_url)
 
         if response.status_code == 200:
             res_json = response.json()
        
-            return_text = f"今日美金匯率: {res_json['originalValues']['toAmountWithVisaRate']}"
+            return_text = f"今日美金匯率: {res_json['conversion_rate']}"
             return Command(goto=END, update={"messages": [ HumanMessage(content=return_text) ]})
         
-        # current_date -= timedelta(days=1)
         time.sleep(random.uniform(2, 5)) # Random delay
     
     raise Exception(f"Failed to get exchange rate after {max_retries} retries") 

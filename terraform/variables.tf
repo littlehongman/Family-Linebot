@@ -22,3 +22,8 @@ variable "supabase_key" {
   type      = string
   sensitive = true
 }
+
+variable "exchangerate_api_key" {
+  type      = string
+  sensitive = true
+}

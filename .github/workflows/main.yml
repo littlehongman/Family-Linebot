@@ -17,6 +17,7 @@ env:
   TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
   TF_VAR_redis_key: ${{ secrets.REDIS_KEY }}
   TF_VAR_supabase_key: ${{ secrets.SUPABASE_KEY }}
+  TF_VAR_exchangerate_api_key: ${{ secrets.EXCHANGERATE_API_KEY }}
 
 jobs:
   build:

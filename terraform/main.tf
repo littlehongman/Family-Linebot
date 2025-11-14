@@ -48,6 +48,7 @@ resource "aws_lambda_function" "my_lambda" {
       OPENAI_API_KEY        = var.openai_api_key
       REDIS_KEY             = var.redis_key
       SUPABASE_KEY          = var.supabase_key
+      EXCHANGERATE_API_KEY  = var.exchangerate_api_key
     }
   }
 }
