@@ -1,7 +1,9 @@
 import os
 import json
+import time
 import pytz
 import requests
+import random
 from typing import Dict
 from datetime import datetime, timedelta
 from supabase import create_client, Client
@@ -333,8 +335,20 @@ def get_visa_exchange_rate(state, from_curr='TWD', to_curr='USD', amount=1):
         return date.strftime('%m/%d/%Y')
     
     for _ in range(max_retries):
+        user_agents = [
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Safari/605.1.15",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:132.0) Gecko/20100101 Firefox/132.0",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0",
+            "Mozilla/5.0 (X11; Linux x86_64; rv:132.0) Gecko/20100101 Firefox/132.0"
+        ]
+
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'User-Agent': random.choice(user_agents),
             'Accept': 'application/json, text/plain, */*',
             'Accept-Language': 'en-US,en;q=0.9',
             'Origin': 'https://usa.visa.com',
@@ -361,6 +375,7 @@ def get_visa_exchange_rate(state, from_curr='TWD', to_curr='USD', amount=1):
             return_text = f"今日美金匯率: {res_json['originalValues']['toAmountWithVisaRate']}"
             return Command(goto=END, update={"messages": [ HumanMessage(content=return_text) ]})
         
-        current_date -= timedelta(days=1)
+        # current_date -= timedelta(days=1)
+        time.sleep(random.uniform(2, 5)) # Random delay
     
     raise Exception(f"Failed to get exchange rate after {max_retries} retries") 
