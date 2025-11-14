@@ -9,3 +9,4 @@ langgraph
 langchain-openai
 pybase64
 cryptography==45.0.2
+pydantic-core
