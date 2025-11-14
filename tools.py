@@ -327,7 +327,7 @@ def list_todo(state):
     return Command(goto=END, update={"messages": [ HumanMessage(content=return_text) ], 'keep_alive': keep_alive })
 
 def get_visa_exchange_rate(state, from_curr='TWD', to_curr='USD', amount=1):
-    base_url = f"https://v6.exchangerate-api.com/v6/{os.environ['EXCHANGERATE_API_KEY']}/latest/USD"
+    base_url = f"https://v6.exchangerate-api.com/v6/{os.environ['EXCHANGERATE_API_KEY']}/pair/USD/TWD"
     max_retries = 3
 
     for _ in range(max_retries):
