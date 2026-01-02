@@ -31,6 +31,7 @@ class State(MessagesState):
     task: Literal[*options] # type: ignore
     props: Dict
     keep_alive: bool # If the bot should keep the conversation
+    line_msg_id: str
 
 class Router(TypedDict):
     task: Literal[*options] # type: ignore
@@ -250,7 +251,7 @@ def insert_transaction(state) -> str:
     elif state['props']['amount'] == 0:
         return_text = "多少錢？"
     else:
-        response = supabase.rpc('insert_transaction', params={'username': state['props']['user'], "name": state['props']['name'], "amount": state['props']['amount']}).execute()
+        response = supabase.rpc('insert_transaction', params={"username": state['props']['user'], "name": state['props']['name'], "amount": state['props']['amount'], "msg": state['line_msg_id']}).execute()
 
         keep_alive = False
         return_text = f"記帳確認: {state['props']['user']} {state['props']['name']} {state['props']['amount']}"
