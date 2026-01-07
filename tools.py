@@ -303,7 +303,7 @@ def get_transactions_by_user(state) -> str:
 
 def rollback_transaction(msg_id: str) -> str:
     response = (
-        supabase.table("Transactions")
+        supabase.table("Transaction")
             .update({"is_void": True})
             .eq("line_msg_id", msg_id)
             .execute()

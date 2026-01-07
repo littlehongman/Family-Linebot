@@ -66,7 +66,12 @@ def lambda_handler(event, context):
     
     @handler.add(UnsendEvent)
     def handle_unsend_message(event):
-        rollback_transaction(event.unsend.message_id)
+        return_text = rollback_transaction(event.unsend.message_id)
+
+        logger.info("Sending Text Message")
+        line_bot_api.reply_message(
+            event.reply_token, TextSendMessage(text=return_text)
+        )
 
     # get X-Line-Signature header value
     signature = event["headers"]["x-line-signature"]
