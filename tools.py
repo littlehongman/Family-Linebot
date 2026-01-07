@@ -308,9 +308,11 @@ def rollback_transaction(msg_id: str) -> str:
             .eq("line_msg_id", msg_id)
             .execute()
     )
-
+    
+    if not response.data:
+        return None
+    
     return_text = f"記帳取消確認"
-
     return return_text
 
 

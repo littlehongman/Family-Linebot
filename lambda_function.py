@@ -68,9 +68,15 @@ def lambda_handler(event, context):
     def handle_unsend_message(event):
         return_text = rollback_transaction(event.unsend.message_id)
 
-        logger.info("Sending Text Message")
-        line_bot_api.reply_message(
-            event.reply_token, TextSendMessage(text=return_text)
+        if not return_text:
+            return
+
+        logger.info("Sending Text Message")        
+        target_id = event.source.group_id if event.source.type == "group" else event.source.user_id
+
+        line_bot_api.push_message(
+            target_id,
+            TextSendMessage(text=return_text)
         )
 
     # get X-Line-Signature header value
