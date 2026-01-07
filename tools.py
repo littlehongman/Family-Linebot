@@ -301,6 +301,19 @@ def get_transactions_by_user(state) -> str:
 
     return Command(goto=END, update={"messages": [ HumanMessage(content=return_message) ], 'keep_alive': keep_alive })
 
+def rollback_transaction(msg_id: str) -> str:
+    response = (
+        supabase.table("Transactions")
+            .update({"is_void": True})
+            .eq("line_msg_id", msg_id)
+            .execute()
+    )
+
+    return_text = f"記帳取消確認"
+
+    return return_text
+
+
 def insert_todo(state):
     return_text = ""
     keep_alive = True

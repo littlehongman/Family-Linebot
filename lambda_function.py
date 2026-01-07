@@ -12,6 +12,7 @@ from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage, FlexSendMessage, UnsendEvent
 
 from graph import BotMemory, build_graph
+from tools import rollback_transaction
 
 
 logger = logging.getLogger()
@@ -65,7 +66,7 @@ def lambda_handler(event, context):
     
     @handler.add(UnsendEvent)
     def handle_unsend_message(event):
-        logger.info(f"Message Unsend Event ID: {event.unsend.message_id}")
+        rollback_transaction(event.unsend.message_id)
 
     # get X-Line-Signature header value
     signature = event["headers"]["x-line-signature"]
