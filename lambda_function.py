@@ -6,10 +6,20 @@ import json
 import logging
 import inspect
 
-# line-bot-sdk-python v2.0.0
-from linebot import LineBotApi, WebhookHandler
-from linebot.exceptions import InvalidSignatureError
-from linebot.models import MessageEvent, TextMessage, TextSendMessage, FlexSendMessage, UnsendEvent
+# line-bot-sdk-python v3
+from linebot.v3 import WebhookHandler
+from linebot.v3.exceptions import InvalidSignatureError
+from linebot.v3.webhooks import MessageEvent, TextMessageContent, UnsendEvent
+from linebot.v3.messaging import (
+    Configuration,
+    ApiClient,
+    MessagingApi,
+    ReplyMessageRequest,
+    PushMessageRequest,
+    TextMessage,
+    FlexMessage,
+    FlexContainer,
+)
 
 from graph import BotMemory, build_graph
 from tools import rollback_transaction
@@ -18,7 +28,7 @@ from tools import rollback_transaction
 logger = logging.getLogger()
 logger.setLevel("INFO")
 
-line_bot_api = LineBotApi(os.environ["CHANNEL_ACCESS_TOKEN"])
+configuration = Configuration(access_token=os.environ["CHANNEL_ACCESS_TOKEN"])
 handler = WebhookHandler(os.environ["CHANNEL_SECRET"])
 
 
@@ -41,7 +51,7 @@ def run_workflow(user_id: str, msg: str, msg_id=None) -> str:
 
 
 def lambda_handler(event, context):
-    @handler.add(MessageEvent, message=TextMessage)
+    @handler.add(MessageEvent, message=TextMessageContent)
     def handle_message(event):
 
         logger.info(event.source.user_id)
@@ -51,19 +61,32 @@ def lambda_handler(event, context):
         if return_text != "":
             logger.info(return_text)
 
-            try:
-                flex_dict = json.loads(return_text)
-                logger.info("Sending Flex Message")
-                line_bot_api.reply_message(
-                    event.reply_token,
-                    FlexSendMessage(alt_text="Transaction Summary", contents=flex_dict),
-                )
-            except (json.JSONDecodeError, TypeError):
-                logger.info("Sending Text Message")
-                line_bot_api.reply_message(
-                    event.reply_token, TextSendMessage(text=return_text)
-                )
-    
+            with ApiClient(configuration) as api_client:
+                line_bot_api = MessagingApi(api_client)
+
+                try:
+                    flex_dict = json.loads(return_text)
+                    logger.info("Sending Flex Message")
+                    line_bot_api.reply_message(
+                        ReplyMessageRequest(
+                            reply_token=event.reply_token,
+                            messages=[
+                                FlexMessage(
+                                    alt_text="Transaction Summary",
+                                    contents=FlexContainer.from_dict(flex_dict),
+                                )
+                            ],
+                        )
+                    )
+                except (json.JSONDecodeError, TypeError):
+                    logger.info("Sending Text Message")
+                    line_bot_api.reply_message(
+                        ReplyMessageRequest(
+                            reply_token=event.reply_token,
+                            messages=[TextMessage(text=return_text)],
+                        )
+                    )
+
     @handler.add(UnsendEvent)
     def handle_unsend_message(event):
         return_text = rollback_transaction(event.unsend.message_id)
@@ -71,13 +94,17 @@ def lambda_handler(event, context):
         if not return_text:
             return
 
-        logger.info("Sending Text Message")        
+        logger.info("Sending Text Message")
         target_id = event.source.group_id if event.source.type == "group" else event.source.user_id
 
-        line_bot_api.push_message(
-            target_id,
-            TextSendMessage(text=return_text)
-        )
+        with ApiClient(configuration) as api_client:
+            line_bot_api = MessagingApi(api_client)
+            line_bot_api.push_message(
+                PushMessageRequest(
+                    to=target_id,
+                    messages=[TextMessage(text=return_text)],
+                )
+            )
 
     # get X-Line-Signature header value
     signature = event["headers"]["x-line-signature"]
