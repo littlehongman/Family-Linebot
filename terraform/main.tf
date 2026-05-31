@@ -36,7 +36,8 @@ resource "aws_lambda_function" "my_lambda" {
   runtime       = "python3.11"
   role          = aws_iam_role.lambda_exec_role.arn
   handler       = "lambda_function.lambda_handler"
-  timeout       = 15
+  timeout       = 20
+  memory_size   = 512
 
   filename         = "${path.module}/../lambda_package.zip"
   source_code_hash = filebase64sha256("${path.module}/../lambda_package.zip")
