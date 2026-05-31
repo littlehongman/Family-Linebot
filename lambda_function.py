@@ -50,61 +50,75 @@ def run_workflow(user_id: str, msg: str, msg_id=None) -> str:
     return ""
 
 
+def _reply(reply_token, message) -> None:
+    with ApiClient(configuration) as api_client:
+        MessagingApi(api_client).reply_message(
+            ReplyMessageRequest(reply_token=reply_token, messages=[message])
+        )
+
+
+def _push(to, message) -> None:
+    with ApiClient(configuration) as api_client:
+        MessagingApi(api_client).push_message(
+            PushMessageRequest(to=to, messages=[message])
+        )
+
+
+def rollback_and_push(message_id, source) -> None:
+    """Roll back the transaction tied to ``message_id`` and push the result.
+
+    Shared by the unsend event and the quote-reply "收回" recall: LINE blocks
+    unsending a message after 24h, so for older messages the user quote-replies
+    it instead, and we treat that exactly like an unsend.
+    """
+    return_text = rollback_transaction(message_id)
+
+    if not return_text:
+        return
+
+    logger.info("Sending Text Message")
+    target_id = source.group_id if source.type == "group" else source.user_id
+    _push(target_id, TextMessage(text=return_text))
+
+
 def lambda_handler(event, context):
     @handler.add(MessageEvent, message=TextMessageContent)
     def handle_message(event):
 
         logger.info(event.source.user_id)
 
-        return_text = run_workflow(event.source.user_id, event.message.text, event.message.id)
+        text = event.message.text
+        quoted_id = event.message.quoted_message_id
+
+        # Quote-reply recall: when a message is too old to unsend (LINE's 24h
+        # limit), the user quote-replies it with "小鴻" + "收回" to roll it back.
+        if quoted_id and "小鴻" in text and "收回" in text:
+            logger.info("Quote-reply recall on message %s", quoted_id)
+            rollback_and_push(quoted_id, event.source)
+            return
+
+        return_text = run_workflow(event.source.user_id, text, event.message.id)
 
         if return_text != "":
             logger.info(return_text)
 
-            with ApiClient(configuration) as api_client:
-                line_bot_api = MessagingApi(api_client)
-
-                try:
-                    flex_dict = json.loads(return_text)
-                    logger.info("Sending Flex Message")
-                    line_bot_api.reply_message(
-                        ReplyMessageRequest(
-                            reply_token=event.reply_token,
-                            messages=[
-                                FlexMessage(
-                                    alt_text="Transaction Summary",
-                                    contents=FlexContainer.from_dict(flex_dict),
-                                )
-                            ],
-                        )
-                    )
-                except (json.JSONDecodeError, TypeError):
-                    logger.info("Sending Text Message")
-                    line_bot_api.reply_message(
-                        ReplyMessageRequest(
-                            reply_token=event.reply_token,
-                            messages=[TextMessage(text=return_text)],
-                        )
-                    )
+            try:
+                flex_dict = json.loads(return_text)
+                logger.info("Sending Flex Message")
+                _reply(
+                    event.reply_token,
+                    FlexMessage(
+                        alt_text="Transaction Summary",
+                        contents=FlexContainer.from_dict(flex_dict),
+                    ),
+                )
+            except (json.JSONDecodeError, TypeError):
+                logger.info("Sending Text Message")
+                _reply(event.reply_token, TextMessage(text=return_text))
 
     @handler.add(UnsendEvent)
     def handle_unsend_message(event):
-        return_text = rollback_transaction(event.unsend.message_id)
-
-        if not return_text:
-            return
-
-        logger.info("Sending Text Message")
-        target_id = event.source.group_id if event.source.type == "group" else event.source.user_id
-
-        with ApiClient(configuration) as api_client:
-            line_bot_api = MessagingApi(api_client)
-            line_bot_api.push_message(
-                PushMessageRequest(
-                    to=target_id,
-                    messages=[TextMessage(text=return_text)],
-                )
-            )
+        rollback_and_push(event.unsend.message_id, event.source)
 
     # get X-Line-Signature header value
     signature = event["headers"]["x-line-signature"]
