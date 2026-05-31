@@ -1,0 +1,23 @@
+[project]
+name = "langgraph-linebot"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "requests>=2.32.5",
+    "pytz",
+    "supabase",
+    "line-bot-sdk",
+    "openai",
+    "prettytable",
+    "redis",
+    "langgraph",
+    "langchain-openai",
+    "pybase64",
+    "cryptography==45.0.2",
+    "pydantic-core",
+]
+
+[tool.uv]
+package = false
