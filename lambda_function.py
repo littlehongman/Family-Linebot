@@ -126,6 +126,9 @@ def lambda_handler(event, context):
     # get request body as text
     body = event["body"]
 
+    # log the incoming payload (events[].source.userId is the push `to`)
+    logger.info("Incoming payload: %s", body)
+
     # handle webhook body
     try:
         secret = os.environ["CHANNEL_SECRET"]
