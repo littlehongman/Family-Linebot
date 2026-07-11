@@ -21,8 +21,7 @@ from linebot.v3.messaging import (
     FlexContainer,
 )
 
-from graph import BotMemory, build_graph
-from tools import rollback_transaction
+from tools import agent, rollback_transaction
 
 
 logger = logging.getLogger()
@@ -33,21 +32,11 @@ handler = WebhookHandler(os.environ["CHANNEL_SECRET"])
 
 
 def run_workflow(user_id: str, msg: str, msg_id=None) -> str:
+    # Each message must be self-contained and address the bot by name
+    if "小鴻" not in msg:
+        return ""
 
-    bot_memory = BotMemory(user_id)
-    bot_memory.save(msg)
-    chat = bot_memory.get_history()
-
-    if "小鴻" in chat:
-        graph = build_graph()
-        res = graph.invoke({"messages": [{"role": "user", "content": chat}], "line_msg_id": msg_id})
-
-        if res["keep_alive"] == False:
-            bot_memory.clear()
-
-        return res["messages"][-1].content
-
-    return ""
+    return agent.run_sync(msg, deps=msg_id).output
 
 
 def _reply(reply_token, message) -> None:

@@ -13,11 +13,6 @@ variable "openai_api_key" {
   sensitive = true
 }
 
-variable "redis_key" {
-  type      = string
-  sensitive = true
-}
-
 variable "supabase_key" {
   type      = string
   sensitive = true

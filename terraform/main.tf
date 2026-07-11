@@ -47,7 +47,6 @@ resource "aws_lambda_function" "my_lambda" {
       CHANNEL_ACCESS_TOKEN = var.channel_access_token
       CHANNEL_SECRET        = var.channel_secret
       OPENAI_API_KEY        = var.openai_api_key
-      REDIS_KEY             = var.redis_key
       SUPABASE_KEY          = var.supabase_key
       EXCHANGERATE_API_KEY  = var.exchangerate_api_key
     }

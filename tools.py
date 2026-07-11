@@ -1,21 +1,11 @@
 import os
 import json
 import time
-import pytz
 import requests
 import random
-from typing import Dict
-from datetime import datetime, timedelta
+
+from pydantic_ai import Agent, RunContext
 from supabase import create_client, Client
-from prettytable import PrettyTable
-
-from typing import Dict, Literal
-from typing_extensions import TypedDict
-
-from langgraph.graph import END, MessagesState
-from langgraph.types import Command
-from langchain_core.messages import HumanMessage
-from langchain_openai import ChatOpenAI
 
 from line import flex_message_generator
 
@@ -26,16 +16,6 @@ SUPABASE_KEY = os.environ['SUPABASE_KEY']
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 options = ["greeting", "currency_conversion", "transaction_insert", "balance_check", "transaction_list", "todo_insert", "todo_list"]
-
-class State(MessagesState):
-    task: Literal[*options] # type: ignore
-    props: Dict
-    keep_alive: bool # If the bot should keep the conversation
-    line_msg_id: str
-
-class Router(TypedDict):
-    task: Literal[*options] # type: ignore
-    props: Dict
 
 
 system_prompt = f"""
@@ -209,97 +189,42 @@ Extract all relevant information
 Include only the columns relevant to the specific task type in the props object
 """
 
-llm = ChatOpenAI(model="gpt-4o-mini", openai_api_key=OPENAI_API_KEY)
+def greeting() -> str:
+    """Respond to a simple greeting."""
+    return "我是小鴻"
 
+def transaction_insert(ctx: RunContext[str], user: str = "", name: str = "", amount: float = 0) -> str:
+    """Record a transaction. amount is signed: expenses negative, income/withdrawal positive.
+    Leave a field empty ("" or 0) when it cannot be determined from the message."""
+    if user == "":
+        return "要記誰的帳？"
+    if name == "":
+        return "要記什麼款項？"
+    if amount == 0:
+        return "多少錢？"
 
-def intention_bot(state: State) -> Command[Literal[*options, "__end__"]]: # type: ignore
-    # Check if previous conversation is store in redis
+    supabase.rpc('insert_transaction', params={"username": user, "name": name, "amount": amount, "msg": ctx.deps}).execute()
 
-    messages = [
-        {"role": "system", "content": system_prompt},
-    ] + state["messages"]
+    return f"記帳確認: {user} {name} {amount:g}"
 
-    response = llm.with_structured_output(Router).invoke(messages)
+def balance_check(user: str = "") -> str:
+    """Report a user's balance. Leave user empty ("") when it cannot be determined."""
+    if user == "":
+        return "誰的餘額？"
 
-    print(response)
-    
-    goto = response["task"]
+    response = supabase.rpc('get_balance_by_user', params={'username': user}).execute()
 
-    if goto == "FINISH":
-        goto = END
-    
-    return Command(goto=goto, update={'props': response['props'], 'keep_alive': False})
+    return f"{user}餘額: {response.data}"
 
-def preprocess_message(text: str) -> str:
-    text = text.replace("小鴻", '')
-    text = text.strip()
-    
-    return text
+def transaction_list(user: str = "") -> str:
+    """List a user's transactions. Leave user empty ("") when it cannot be determined."""
+    if user == "":
+        return "誰的餘額？"
 
-def greeting(state):
-    return_text = "我是小鴻"
-    return Command(goto=END, update={"messages": [ HumanMessage(content=return_text) ], 'keep_alive': True})
+    response = supabase.rpc('get_transaction_by_user', params={'username': user}).execute()
 
-def insert_transaction(state) -> str:
-    return_text = ""
-    keep_alive = True
-
-    if state['props']['user'] == "":
-        return_text = "要記誰的帳？"
-    elif state['props']['name'] == "":
-        return_text = "要記什麼款項？"
-    elif state['props']['amount'] == 0:
-        return_text = "多少錢？"
-    else:
-        response = supabase.rpc('insert_transaction', params={"username": state['props']['user'], "name": state['props']['name'], "amount": state['props']['amount'], "msg": state['line_msg_id']}).execute()
-
-        keep_alive = False
-        return_text = f"記帳確認: {state['props']['user']} {state['props']['name']} {state['props']['amount']}"
-   
-    return Command(goto=END, update={"messages": [ HumanMessage(content=return_text) ], 'keep_alive': keep_alive })
-
-def get_balance_by_user(state):
-    return_text = ""
-    keep_alive = True
-
-    if state['props']['user'] == "":
-        return_text = "誰的餘額？"
-
-    else:
-        response = supabase.rpc('get_balance_by_user', params={'username': state['props']['user']}).execute()
-
-        keep_alive = False
-        return_text =  f"{state['props']['user']}餘額: {response.data}"
-
-    return Command(goto=END, update={"messages": [ HumanMessage(content=return_text) ], 'keep_alive': keep_alive})
-
-def get_transactions_by_user(state) -> str:
-
-    def create_table_string(data):
-        table = PrettyTable()
-        table.field_names = ["款項", "金額"]
-        
-        for item in data:
-            table.add_row([item['name'], item['amount']])
-        
-        table.align["款項"] = "l"  # Left align the Name column
-        table.align["金額"] = "r"  # Right align the Amount column
-        
-        return table.get_string()
-    
-    return_text = ""
-    keep_alive = True
-
-    if 'user' not in state['props'] or state['props']['user'] == "":
-        return_text = "誰的餘額？"
-    
-    else:
-        response = supabase.rpc('get_transaction_by_user', params={'username': state['props']['user']}).execute()
-
-        keep_alive = False
-        return_message = json.dumps(flex_message_generator(response.data), ensure_ascii=False, indent=2)
-
-    return Command(goto=END, update={"messages": [ HumanMessage(content=return_message) ], 'keep_alive': keep_alive })
+    # JSON string; lambda_function parses it into a LINE FlexMessage
+    return json.dumps(flex_message_generator(response.data), ensure_ascii=False, indent=2)
 
 def rollback_transaction(msg_id: str) -> str:
     response = (
@@ -316,33 +241,23 @@ def rollback_transaction(msg_id: str) -> str:
     return return_text
 
 
-def insert_todo(state):
-    return_text = ""
-    keep_alive = True
+def todo_insert(item: str = "") -> str:
+    """Add a todo item. Leave item empty ("") when only generic terms were given."""
+    if item == "":
+        return "記什麼呢?"
 
-    if 'item' not in state['props'] or state['props']['item'] == "":
-        return_text = "記什麼呢?"
+    supabase.table("Todo").insert({"item": item}).execute()
 
-    else:
-        response = supabase.table("Todo").insert({"item": state['props']['item']}).execute()
+    return f"記好了 {item}"
 
-        return_text = f"記好了 {state['props']['item']}"
-        keep_alive = False
-
-    return Command(goto=END, update={"messages": [ HumanMessage(content=return_text) ], 'keep_alive': keep_alive })
-
-def list_todo(state):
-    return_text = ""
-    keep_alive = True
-
-
+def todo_list() -> str:
+    """List all todo items."""
     response = supabase.table("Todo").select("item").execute()
-    return_text = "- " + "\n- ".join([row['item'] for row in response.data])
-    keep_alive = False
 
-    return Command(goto=END, update={"messages": [ HumanMessage(content=return_text) ], 'keep_alive': keep_alive })
+    return "- " + "\n- ".join([row['item'] for row in response.data])
 
-def get_visa_exchange_rate(state, from_curr='TWD', to_curr='USD', amount=1):
+def currency_conversion() -> str:
+    """Report today's USD/TWD exchange rate."""
     base_url = f"https://v6.exchangerate-api.com/v6/{os.environ['EXCHANGERATE_API_KEY']}/pair/USD/TWD"
     max_retries = 3
 
@@ -352,9 +267,19 @@ def get_visa_exchange_rate(state, from_curr='TWD', to_curr='USD', amount=1):
         if response.status_code == 200:
             res_json = response.json()
        
-            return_text = f"今日美金匯率: {res_json['conversion_rate']}"
-            return Command(goto=END, update={"messages": [ HumanMessage(content=return_text) ]})
+            return f"今日美金匯率: {res_json['conversion_rate']}"
         
         time.sleep(random.uniform(2, 5)) # Random delay
-    
-    raise Exception(f"Failed to get exchange rate after {max_retries} retries") 
+
+    return "匯率查詢失敗，請稍後再試"
+
+
+# The model must finish by calling exactly one of these output functions;
+# its return value is the bot's reply (single LLM call, no paraphrasing).
+agent = Agent(
+    "openai:gpt-4o-mini",
+    instructions=system_prompt,
+    deps_type=str,  # LINE message id, used by transaction_insert for the unsend feature
+    output_type=[greeting, currency_conversion, transaction_insert,
+                 balance_check, transaction_list, todo_insert, todo_list],
+)
